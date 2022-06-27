@@ -1,0 +1,28 @@
+{
+  "name": "marketing-oembed-meeting-tools",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hypercontext/marketing-oembed-meeting-tools.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Hypercontext/marketing-oembed-meeting-tools/issues"
+  },
+  "homepage": "https://github.com/Hypercontext/marketing-oembed-meeting-tools#readme",
+  "dependencies": {
+    "autoprefixer": "^10.4.7",
+    "tailwindcss": "^3.1.4"
+  },
+  "scripts": {
+    "build": "tailwindcss build -i ./src/input.css -o ./public/styles.css --watch",
+    "prod": "tailwindcss build -i ./src/input.css -o ./public/styles.css --minify"
+  }
+}
