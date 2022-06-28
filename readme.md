@@ -37,7 +37,9 @@ Internal state that can be pre-set
 Advanced / For Shared State:
 - `sync-token` - default null. If set the iframe will send postMessages to the parent window with changes to the countdown timers state. eg
 
-example message:
+The postMessage portions of the code is untested... but...
+
+example message from child iframe:
 ```
 'hypercontext.com': {
     'event': 'updated-state',
@@ -50,4 +52,11 @@ example message:
 
 The url value in the above example can be loaded for others to follow along (but will cause a brief reload for them)
 
-The state value can be postMessage'd to other iframes to update the state of the timer without causing a reload.
+The state value can be postMessage'd to other iframes to update the state of the timer without causing a reload. Theoretically the parent iframe could pass the state they'd like to sync to by
+
+```
+document.getElementById('Frame').contentWindow.postMessage({
+    'sync-token': /* ...exact same sync-token as initially passed to component */,
+    'state': /*... urlencoded & json stringified object of all the attributes within the component */,
+}, "hypercontext.com");
+```
