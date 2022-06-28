@@ -4,10 +4,460 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="styles.css" rel="stylesheet">
+  <script type="text/javascript">
+    const queryParams = new URLSearchParams(window.location.search);
+
+    let view = {
+        attributes: {
+            'autoplay': false,
+            'sync-token': queryParams.get('sync-token') || null
+        },
+        models: {
+            alarmSound: new Audio('https://soundbible.com/mp3/Fire_pager-jason-1283464858.mp3'),
+            tickSound: new Audio('https://soundbible.com/mp3/Tick-DeepFrozenApps-397275646.mp3'),
+            interval: null,
+        },
+        actions: {
+            init: function(){
+                view.actions.reset();
+                if(view.attributes.autoplay){
+                    view.actions.resume();
+                }
+
+                if(view.attributes['sync-token']){
+                    window.addEventListener("message", (event) => {
+                        if(event.data && event.data['hypercontext.com']){
+                            view.actions.recieveState(event.data['hypercontext.com']);
+                        }
+                    }, false);
+                }
+            },
+            importState: function(state){
+                var state = JSON.parse(decodeURI(state));
+                state.autoplay = state.isPlaying;
+
+                view.actions.pause();
+
+                view.attributes = state;
+
+                if(state.isPlaying){
+                    view.actions.resume();
+                } else {
+                    view.actions.tick();
+                }
+            },
+            exportState: function(){
+
+                if(view.attributes['sync-token'] == null){
+                    delete view.attributes['sync-token'];
+                }
+
+                return encodeURI(JSON.stringify(view.attributes));
+            },
+            getStateShareUrl: function(){
+                
+                var qp = new URLSearchParams();
+
+                qp.append('autoplay', view.attributes.isPlaying);
+                qp.append('time-elapsed-percent', view.attributes.timeElapsedPercent);
+
+                qp = view.actions.addThemeToUrl(qp);
+
+                if(view.attributes['sync-token']){
+                    qp.append('sync-token', view.attributes['sync-token'])
+                }
+
+                if(view.attributes.isPlaying){
+                    qp.append('target-time', view.attributes.targetTime);
+
+                    return [
+                        document.location.origin,
+                        document.location.pathname,
+                        '?',
+                        qp.toString()
+                    ].join('');
+                } else {
+
+                    qp.append('days', view.attributes.days)
+                    qp.append('hours', view.attributes.hours)
+                    qp.append('minutes', view.attributes.minutes)
+                    qp.append('seconds', view.attributes.seconds)
+
+                    return [
+                        document.location.origin,
+                        document.location.pathname,
+                        '?',
+                        qp.toString()
+                    ].join('');
+                }
+
+            },
+            addThemeToUrl: function(qp){
+                qp.append('bg-color', view.attributes.bgColor);
+                qp.append('text-color', view.attributes.textColor);
+                qp.append('progress-color', view.attributes.progressColor);
+                
+                qp.append('bg-color-warning', view.attributes.bgColorWarning);
+                qp.append('text-color-warning', view.attributes.textColorWarning);
+                qp.append('progress-color-warning', view.attributes.progressColorWarning);
+
+                qp.append('bg-color-alarm', view.attributes.bgColorAlarm);
+                qp.append('text-color-alarm', view.attributes.textColorAlarm);
+                qp.append('progress-color-alarm', view.attributes.progressColorAlarm);
+
+                return qp;
+            },
+            recieveState: function(data){
+                if(data['sync-token'] == view.attributes['sync-token']){
+                    view.action.importState(data.state)
+                }
+            },
+            sendState: function(reason){
+                if(view.attributes['sync-token']){
+                    window.parent.postMessage({
+                        'hypercontext.com': {
+                            'event': 'updated-state',
+                            'reason': reason,
+                            'sync-token': view.attributes['sync-token'],
+                            'state': view.actions.exportState(),
+                            'url': view.actions.getStateShareUrl()
+                        }
+                    }, "*");
+                }
+            },
+            playOrPause: function(){
+                if(view.models.interval ){
+                    view.actions.pause();
+                } else {
+                    view.actions.resume();
+                }
+            },
+            pause: function(){
+                view.attributes.isPlaying = false;
+                view.attributes.isPaused = true;
+
+                view.models.interval = clearInterval(view.models.interval);
+                if(view.attributes.targetTime !== null){
+                    view.actions.tick();
+                }
+                view.attributes.targetTime = null;
+
+                view.actions.sendState('paused');
+            },
+            resume: function(){
+                if(view.attributes.targetTime == null){
+                    view.attributes.targetTime = view.actions.makeTargetTime();
+                }
+
+                view.attributes.isPlaying = true;
+                view.attributes.isPaused = false;
+                view.actions.tick();
+                view.models.interval = setInterval(function(){
+                    view.actions.tick();
+                }, view.attributes.updateInterval)
+
+                view.actions.sendState('resumed');
+            },
+
+            reloadUserEdits: function(){
+                var qp = new URLSearchParams();
+
+                qp = view.actions.addThemeToUrl(qp);
+
+                if(view.attributes['sync-token']){
+                    qp.append('sync-token', view.attributes['sync-token'])
+                }
+
+                qp.append('hours', document.querySelector('input[name="hours"]').value)
+                qp.append('minutes', document.querySelector('input[name="minutes"]').value)
+                qp.append('seconds', document.querySelector('input[name="seconds"]').value)
+
+                window.location =  [
+                    document.location.origin,
+                    document.location.pathname,
+                    '?',
+                    qp.toString()
+                ].join('');
+
+            },
+            playAlarm: function(){
+                view.models.alarmSound.play().then(_ => {}).catch(error => {});
+            },
+            playAudibleTick: function(){
+                view.models.tickSound.play().then(_ => {}).catch(error => {});
+            },
+            tick: function(){
+                view.attributes.now = Date.now() - 100;
+                view.attributes.timeElapsed = view.attributes.timeElapsed + view.attributes.updateInterval;
+                view.actions.updateTimer();
+                view.actions.updateProgress();
+                view.actions.updateStyles();
+            },
+            updateStyles: function(){
+                var meta = document.querySelectorAll('.meta');
+                meta.forEach(function(el){
+                    el.classList.toggle('opacity-50')
+                    el.classList.toggle('opacity-60')
+                });
+
+                if(view.attributes.isAlarm){
+                    document.body.style.background = view.attributes.bgColorAlarm;
+                    document.querySelectorAll('.progress').forEach(function(el){
+                        el.style.background = view.attributes.progressColorAlarm;
+                    });
+                    document.querySelector('.timer-text').style.color = view.attributes.textColorAlarm;;
+                } else if(view.attributes.isWarning){
+                    document.body.style.background = view.attributes.bgColorWarning;
+                    document.querySelectorAll('.progress').forEach(function(el){
+                        el.style.background = view.attributes.progressColorWarning;
+                    });
+                    document.querySelector('.timer-text').style.color = view.attributes.textColorWarning;
+                } else {
+                    document.body.style.background = view.attributes.bgColor;
+                    document.querySelectorAll('.progress').forEach(function(el){
+                        el.style.background = view.attributes.progressColor;
+                    });
+                    document.querySelector('.timer-text').style.color = view.attributes.textColor;
+                }
+            },
+            updateProgress: function(){
+                var precentDone = view.attributes.timeElapsedPercent;
+
+                var topProgressBar = Math.max(0, Math.min((precentDone-0) / 25, 1))*100;
+                var rightProgressBar = Math.max(0, Math.min((precentDone-25) / 25, 1))*100;
+                var bottomProgressBar = Math.max(0, Math.min((precentDone-50) / 25, 1))*100;
+                var leftProgressBar = Math.max(0, Math.min((precentDone-75) / 25, 1))*100;
+
+                
+
+                var progressBarWidth = 1;
+
+                if(view.attributes.timeRemaining <= 30 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 10 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 5 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 4 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 3 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 2 * 1000){
+                    progressBarWidth++;
+                }
+                if(view.attributes.timeRemaining <= 1 * 1000){
+                    progressBarWidth++;
+                }
+
+                document.querySelector('#top-progress-bar').classList.remove('h-1','h-2','h-3','h-4','h-5','h-6','h-7','h-8')
+                document.querySelector('#top-progress-bar').classList.add('h-'+progressBarWidth);
+                document.querySelector('#top-progress-bar .progress').style.width = topProgressBar+'%';
+
+                document.querySelector('#right-progress-bar').classList.remove('w-1','w-2','w-3','w-4','w-5','w-6','w-7','w-8')
+                document.querySelector('#right-progress-bar').classList.add('w-'+progressBarWidth);
+                document.querySelector('#right-progress-bar .progress').style.height = rightProgressBar+'%';
+
+                document.querySelector('#bottom-progress-bar').classList.remove('h-1','h-2','h-3','h-4','h-5','h-6','h-7','h-8')
+                document.querySelector('#bottom-progress-bar').classList.add('h-'+progressBarWidth);
+                document.querySelector('#bottom-progress-bar .progress').style.width = bottomProgressBar+'%';
+
+                document.querySelector('#left-progress-bar').classList.remove('w-1','w-2','w-3','w-4','w-5','w-6','w-7','w-8')
+                document.querySelector('#left-progress-bar').classList.add('w-'+progressBarWidth);
+                document.querySelector('#left-progress-bar .progress').style.height = leftProgressBar+'%';
+            },
+            updateTimeElapsed: function(){
+                if(view.attributes.timeElapsed + view.attributes.timeRemaining == 0){
+                    view.attributes.timeElapsed = 0;
+                    view.attributes.timeElapsedPercent = 0
+                } else {
+                    var timeElapsed = view.attributes.timeElapsed;
+                    var timeRemaining = view.attributes.timeRemaining;
+
+                    view.attributes.timeElapsed = timeElapsed + view.attributes.updateInterval
+                    view.attributes.timeElapsedPercent = Math.round((view.attributes.timeElapsed / (view.attributes.timeElapsed + view.attributes.timeRemaining) ) * 1000) / 10
+                }
+            },
+            updateTimer: function(){
+
+                var timeRemaining = view.attributes.timeRemaining = (view.attributes.targetTime || view.actions.makeTargetTime()) - view.attributes.now;
+
+                view.actions.updateTimeElapsed();
+
+                var days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+                if (days == 0 && hours == 0 && minutes == 0 && seconds == 0){
+                    view.actions.playAlarm();
+                } 
+                if (days <= 0 && hours <= 0 && minutes <= 0 && seconds <= 0){
+                    view.attributes.isAlarm = true;
+                } else {
+                    view.attributes.isAlarm = false;
+                }
+
+                if(seconds <= 10&& seconds > 0 && seconds !== view.attributes.seconds && minutes == 0 && hours == 0 && days == 0) {
+                    view.attributes.isWarning = true;
+                    view.actions.playAudibleTick();
+                } else {
+                    view.attributes.isWarning = false;
+                }
+
+                view.actions.renderUnit('seconds', seconds);
+                view.actions.renderUnit('minutes', minutes);
+                view.actions.renderUnit('hours', hours);
+                view.actions.renderUnit('days', days);
+
+            },
+            renderUnit: function(type, number) {
+                var typeEl = document.querySelector('.'+type+'');
+                var unitsEl = document.querySelector('.'+type+' .units');
+
+                if(number < 0 && type != 'seconds'){
+                    number = number + 1;
+                }
+
+                view.attributes[type] = number;
+
+                if(number != 0){
+                    typeEl.classList.remove('hidden')
+                } else if(type != 'seconds'){
+                    typeEl.classList.add('hidden')
+                }
+
+                if(type == 'seconds' && number.toString().length == 1) {
+                    number = '0'+number
+                }
+
+                unitsEl.innerHTML = number;
+            },
+            makeTargetTime: function(){
+                return Date.now() 
+                        + Number(view.attributes.days) * 24 * 60 * 60 * 1000
+                        + Number(view.attributes.hours) * 60 * 60 * 1000
+                        + Number(view.attributes.minutes) * 60 * 1000 
+                        + Number(view.attributes.seconds) * 1000;
+            },
+            reset: function(){
+                view.attributes.now = Date.now();
+                view.attributes.autoplay =  (queryParams.get('autoplay') == 'true') || false;
+                view.attributes.targetTime = queryParams.get('target-time') || null;
+                view.attributes.days = queryParams.get('days') || 0;
+                view.attributes.hours = queryParams.get('hours') || 0;
+                view.attributes.minutes = queryParams.get('minutes') || 10;
+                view.attributes.seconds = queryParams.get('seconds') || 0;
+                view.attributes.updateInterval = queryParams.get('update-interval') || 0;
+                view.attributes.timeRemaining = queryParams.get('time-remaining') || 0;
+                view.attributes.timeElapsed = queryParams.get('time-elapsed') || 0;
+                view.attributes.timeElapsedPercent = queryParams.get('time-elapsed-percent') || 0;
+
+                view.attributes.isPlaying = false;
+                view.attributes.isPaused = false;
+                view.attributes.isWarning = false;
+                view.attributes.isAlarm = false;
+
+                view.attributes.bgColor = queryParams.get('bg-color') || 'rgb(226, 232, 240)';
+                view.attributes.textColor = queryParams.get('text-color') || 'rgb(0, 0, 0)';
+                view.attributes.progressColor = queryParams.get('progress-color') || 'rgb(71, 85, 105)';
+                
+                view.attributes.bgColorWarning = queryParams.get('bg-color-warning') || '#fb923c';
+                view.attributes.textColorWarning = queryParams.get('text-color-warning') || '#7c2d12';
+                view.attributes.progressColorWarning = queryParams.get('progress-color-warning') || '#c2410c';
+
+                view.attributes.bgColorAlarm = queryParams.get('bg-color-alarm') || '#f87171';
+                view.attributes.textColorAlarm = queryParams.get('text-color-alarm') || '#7f1d1d';
+                view.attributes.progressColorAlarm = queryParams.get('progress-color-alarm') || '#b91c1c';
+
+                if(view.attributes.targetTime == null){
+                    view.attributes.targetTime = view.actions.makeTargetTime();
+                }
+
+                view.actions.updateTimer();
+                view.actions.updateProgress();
+
+                view.actions.pause();
+
+                view.attributes.updateInterval = 500;
+
+                document.querySelector('input[name="hours"]').value = view.attributes.hours;
+                document.querySelector('input[name="minutes"]').value = view.attributes.minutes;
+                document.querySelector('input[name="seconds"]').value = view.attributes.seconds;
+                if(view.attributes['sync-token']){
+                    document.querySelector('input[name="sync-token"]').value = view.attributes['sync-token'];
+                }
+
+                view.actions.sendState('set/reset');
+                
+            },
+        }
+    }
+  </script>
 </head>
-<body>
-  <h1 class="text-3xl font-bold underline">
-    Hello world!
-  </h1>
+<body class="w-full h-full bg-slate-200">
+    <div class="absolute top-0 left-0 right-0 h-4">
+        <!-- header -->
+        <button class="z-10 absolute right-1 top-1 px-2 py-2 rounded-md transition-all border border-transparent hover:border-gray-400 hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="if (!document.fullscreenElement) {document.documentElement.requestFullscreen();} else {if (document.exitFullscreen) {document.exitFullscreen();}}">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M12 5.5L10 8H14L12 5.5M18 10V14L20.5 12L18 10M6 10L3.5 12L6 14V10M14 16H10L12 18.5L14 16M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19Z"/></svg>
+        </button>
+    </div>
+    <div class="absolute top-4 left-0 bottom-4 right-0 flex flex-col items-center justify-center">
+        <div class="timer-text font-semibold align-middle text-[24vw] ">
+            <span class="days">
+                <span class="units relative after:content-['Days'] after:absolute after:right-0 after:bottom-0 after:left-0 after:text-sm after:text-center">0</span>
+                <span class="meta relative -top-3 -mx-[4vw] font-light opacity-60 transition-opacity">:</span>
+            </span>
+            <span class="hours">
+                <span class="units relative after:content-['Hours'] after:absolute after:right-0 after:bottom-0 after:left-0 after:text-sm after:text-center">0</span>
+                <span class="meta relative -top-3 -mx-[4vw] font-light opacity-60 transition-opacity">:</span>
+            </span>
+            <span class="minutes ">
+                <span class="units relative after:content-['Minutes'] after:absolute after:right-0 after:bottom-0 after:left-0 after:text-sm after:text-center">0</span>
+                <span class="meta relative -top-3 -mx-[4vw] font-light opacity-60 transition-opacity">:</span>
+            </span>
+            <span class="seconds relative">
+                <span class="units after:content-['Seconds'] after:absolute after:right-0 after:bottom-0 after:left-0 after:text-sm after:text-center">0</span>
+                <span class="meta relative -top-3 font-light opacity-60 transition-opacity"></span>
+            </span>
+        </div>
+    </div>
+    <div class="absolute bottom-8 w-full text-center">
+        <!-- footer -->
+        <div tabindex="0" class="inline-block mx-1 px-2 py-2 border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="view.actions.playOrPause()">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M3,5V19L11,12M13,19H16V5H13M18,5V19H21V5"/></svg>
+        </div> 
+        <div tabindex="0" class="inline-block mx-1 px-2 py-2 border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="view.actions.reset();">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C15.8,19.5 13.3,20.2 10.9,19.9L11.4,17.9C13.1,18.1 14.9,17.5 16.2,16.2C18.5,13.9 18.5,10.1 16.2,7.7C15.1,6.6 13.5,6 12,6V10.6L7,5.6L12,0.6V4M6.3,17.6C3.7,15 3.3,11 5.1,7.9L6.6,9.4C5.5,11.6 5.9,14.4 7.8,16.2C8.3,16.7 8.9,17.1 9.6,17.4L9,19.4C8,19 7.1,18.4 6.3,17.6Z"/></svg>
+        </div>
+        <div tabindex="0" class="inline-block group mx-1">
+            <div class="peer px-2 py-2 border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none">
+                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M22.8 19.4C22.9 19.4 22.9 19.5 22.8 19.6L21.8 21.3C21.7 21.4 21.6 21.4 21.5 21.4L20.3 21C20 21.2 19.8 21.3 19.5 21.5L19.3 22.8C19.3 22.9 19.2 23 19.1 23H17.1C17 23 16.9 22.9 16.8 22.8L16.6 21.5C16.3 21.4 16 21.2 15.8 21L14.6 21.5C14.5 21.5 14.4 21.5 14.3 21.4L13.3 19.7C13.2 19.6 13.3 19.5 13.4 19.4L14.5 18.6V17.6L13.4 16.8C13.3 16.7 13.3 16.6 13.3 16.5L14.3 14.8C14.4 14.7 14.5 14.7 14.6 14.7L15.8 15.2C16.1 15 16.3 14.9 16.6 14.7L16.8 13.4C16.8 13.3 16.9 13.2 17.1 13.2H19.1C19.2 13.2 19.3 13.3 19.3 13.4L19.5 14.7C19.8 14.8 20.1 15 20.4 15.2L21.6 14.7C21.7 14.7 21.9 14.7 21.9 14.8L22.9 16.5C23 16.6 22.9 16.7 22.8 16.8L21.7 17.6V18.6L22.8 19.4M19.5 18C19.5 17.2 18.8 16.5 18 16.5S16.5 17.2 16.5 18 17.2 19.5 18 19.5 19.5 18.8 19.5 18M13 14V8H11V14M15 1H9V3H15V1M11.3 20C7.8 19.6 5 16.6 5 13C5 9.1 8.1 6 12 6C15.2 6 17.9 8.1 18.7 11C19.5 11.1 20.2 11.3 20.9 11.6C20.6 10 20 8.6 19 7.4L20.5 6C20 5.5 19.5 5 19 4.6L17.6 6C16.1 4.7 14.1 4 12 4C7 4 3 8 3 13S7 22 12 22H12.3C11.8 21.4 11.5 20.7 11.3 20Z"/></svg>
+            </div>
+            <div class="hidden group-focus:block hover:block absolute bottom-full rounded-md drop-shadow-xl bg-white w-48 -translate-x-24 m-5 text-left">
+                <form method="GET" action="" class="p-3">
+                    <label class="flex mb-2"><span class="inline-block w-1/2">Hours:</span> <input class="inline-block border w-1/2 px-1" name="hours" type="number" min="0" max="24" placeholder="0h"></label>
+                    <label class="flex mb-2"><span class="inline-block w-1/2">Minutes:</span> <input class="inline-block border w-1/2 px-1" name="minutes" type="number" min="0" max="60" placeholder="0m"></label>
+                    <label class="flex mb-2"><span class="inline-block w-1/2">Seconds:</span> <input class="inline-block border w-1/2 px-1" name="seconds" type="number" min="0" max="60" placeholder="0s"></label>
+                    <input class="hidden" name="sync-token" type="hidden" min="0" max="60" value="">
+                    <button class="block w-full border rounded bg-blue-500 border-blue-600 drop-shadow-sm py-2 text-center text-white" onclick="view.actions.reloadUserEdits(); return false;">Update</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="">
+        <!-- Progress bars -->
+        <div id="top-progress-bar" class="absolute top-0 right-0 left-0 h-1"><div class="progress top-0 left-0 absolute h-full w-0 bg-slate-600 transition-all"></div></div>
+        <div id="right-progress-bar" class="absolute top-0 right-0 bottom-0 w-1"><div class="progress top-0 left-0 absolute h-0 w-full bg-slate-600 transition-all"></div></div>
+        <div id="bottom-progress-bar" class="absolute right-0 bottom-0 left-0 h-1"><div class="progress top-0 right-0 absolute h-full w-0 bg-slate-600 transition-all"></div></div>
+        <div id="left-progress-bar" class="absolute top-0 bottom-0 left-0 w-1"><div class="progress absolute bottom-0 left-0 h-0 w-full bg-slate-600 transition-all"></div></div>
+    </div>
+    <script type="text/javascript">
+        view.actions.init();
+    </script>
 </body>
 </html>
