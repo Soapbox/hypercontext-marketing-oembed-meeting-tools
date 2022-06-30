@@ -23,6 +23,6 @@
   },
   "scripts": {
     "build": "tailwindcss build -i ./src/input.css -o ./public/styles.css --watch",
-    "prod": "tailwindcss build -i ./src/input.css -o ./public/styles.css --minify"
+    "prod": "tailwindcss build -i ./src/input.css -o ./public/styles.css --minify --watch"
   }
 }
