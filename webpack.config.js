@@ -2,10 +2,13 @@ const path = require('path')
 
 module.exports = {
   mode: 'development',
-  entry: './src/index.js',
+  entry: {
+    'index': './src/index.js',
+    'wheel': './src/wheel-of-random.js',
+  },
   output: {
     path: path.resolve(__dirname, 'public'),
-    filename: 'bundle.js',
+    filename: 'bundle-[name].js',
   },
   devServer: {
     static: {
