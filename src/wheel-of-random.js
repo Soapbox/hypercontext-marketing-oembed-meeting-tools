@@ -19,6 +19,13 @@ function randomColor(){
     return colors[randomNumber(colors.length)];
 }
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
 function trapezoid(x,a,b,c,d) {
 
     return Math.max(
@@ -39,6 +46,9 @@ let spinningAudioInterval = null
 let view = {
     attributes: {
         'sync-token': queryParams.get('sync-token') || null,
+        'question-heading-title': queryParams.get('question') || "Who should go first?",
+        'spin-button-title': queryParams.get('spin-button-title') || "Spin",
+        'serialized-options': queryParams.get('options') || null,
     },
     models: {
         carousel: null,
@@ -60,11 +70,13 @@ let view = {
             view.attributes.rotationsPerSpin = 3;
             view.attributes.durationPerSpin = 7000; //ms
 
-            if(localStorage.getItem('options')){
+            if(view.attributes['serialized-options'] !== null && view.attributes['serialized-options'].length > 10){
+                view.models.options = JSON.parse(view.attributes['serialized-options']);
+            } else if(localStorage.getItem('options')){
                 view.models.options = JSON.parse(localStorage.getItem('options'));
             }
 
-
+            
             var prevButton = document.querySelector('.previous-button');
             prevButton.addEventListener( 'click', function() {
                 view.attributes.selectedIndex--;
@@ -90,6 +102,10 @@ let view = {
                 }, 150)
             });
 
+
+            view.actions.setTitle(view.attributes['question-heading-title']);
+            document.querySelector('.spin-button-title span').innerText = view.attributes['spin-button-title'];
+
             var updateOptionsButton = document.querySelector('.update-options');
             var optionsTextarea = document.querySelector('.options-textarea');
             if(view.models.options.length){
@@ -99,6 +115,9 @@ let view = {
                 optionsTextarea.innerHTML=textareaContent;
             }
             updateOptionsButton.addEventListener('click', function(){
+
+                view.actions.setTitle(document.querySelector('.question-input-title').value);
+
                 var options = [];
                 optionsTextarea.value.split('\n').forEach(function(value){
                     if(value.length){
@@ -144,6 +163,21 @@ let view = {
                 
                 view.actions.reloadOptions();
                 view.actions.redrawCarousel();
+
+                var qp = new URLSearchParams;
+                qp.append('question', view.attributes['question-heading-title']);
+                qp.append('options', JSON.stringify(view.models.options));
+
+                console.log(qp.toString());
+
+                history.pushState({attributes: view.attributes, options: view.models.options}, '', 
+                    [
+                        document.location.origin,
+                        document.location.pathname,
+                        '?',
+                        qp.toString()
+                    ].join('')
+                );
             });
 
             
@@ -163,6 +197,11 @@ let view = {
         },
         currentWinner: function(){
             return view.models.options[view.attributes.selectedIndex % 360 % view.attributes.cellCount];
+        },
+        setTitle: function(title){
+            view.attributes['question-heading-title'] = title;
+            document.querySelector('.question-heading-title').innerText = view.attributes['question-heading-title'];
+            document.querySelector('.question-input-title').value = view.attributes['question-heading-title'];
         },
         redrawCarousel: function(){
             view.attributes.cellWidth = view.models.carousel.offsetWidth;
@@ -255,22 +294,27 @@ let view = {
           
             view.actions.rotateCarousel(spin, spinDuration);
         },
+        shuffleOptions: function(){
+            shuffleArray(view.models.options);
+            view.actions.reloadOptions();
+            view.actions.redrawCarousel();
+        },
         reloadOptions: function(){
             var optionsArr = []
             view.models.options.forEach(function(option, index){
                 if(option.visible){
                     var optionEl = document.createElement('div');
-                    optionEl.className = 'carousel__cell';
+                    optionEl.className = 'carousel__cell group relative';
                     optionEl.innerHTML = `<div>
-                        <div>${option.label}</div>
-                        
+                        <div class="label">${option.label}</div>
+                        <div class="option-hide-button hidden group-hover:block absolute cursor-pointer right-1 top-1 p-1 xs:px-2 xs:py-1 rounded-md transition-all border border-transparent hover:text-black hover:border-gray-400 hover:bg-gray-100 active:bg-gray-300 ">Hide Option</div>
                     </div>`;
                     optionEl.style.background = option.background;
                     optionEl.style.color = option.text;
                     optionEl.style.transitionDuration = '1000ms';
 
-                    optionEl.addEventListener('dblclick', function(){
-                        this.style.opacity = 0.5;
+                    optionEl.querySelector('.option-hide-button').addEventListener('click', function(){
+                        optionEl.style.opacity = 0.5;
                         setTimeout(function(){
                             var currentlySelectedJSONString = JSON.stringify(view.actions.currentWinner());
                             var currentlySelectedIndex = view.models.options.findIndex(function(value){
