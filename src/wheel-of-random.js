@@ -281,7 +281,7 @@ let view = {
                 var cellAngle = view.attributes.theta * i;
                 cell.style.opacity = 1;
                 cell.style.transform = view.attributes.rotateFn + '(' + cellAngle + 'deg) translateZ(' + (view.attributes.radius || 1) + 'px)';
-                cell.style.transitionDuration = '0ms'
+                cell.style.transitionDuration = '100ms'
                 if(option.className.length){
                     cell.classList.add(option.className);
                 }
