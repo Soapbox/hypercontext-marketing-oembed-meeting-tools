@@ -1,48 +1,47 @@
+<?php
+$url =  "https://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+$escaped_url = htmlspecialchars( $url );
+
+$title = "Wheel of Random Options Picker";
+if(isset($_GET['question'])){
+    $title = htmlspecialchars($_GET['question']);
+    $title = "Random ".$title." option picker";
+}
+
+?>
 <!doctype html>
 <html lang="en" class="h-full w-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wheel of Random - Free Meeting Tools - Hypercontext.com</title>
+  <title><?php echo $title;?> - Free Meeting Tools</title>
+  <link rel="alternate" type="application/json+oembed"
+    href="http://hypercontext.com/embeds/oembed.php?url=<?php echo ($escaped_url);?>&format=json"
+    title="<?php echo $title;?>" />
   <script type="text/javascript" src="bundle-wheel.js"></script>
 </head>
 <body class="w-full h-full bg-slate-200">
     <div class="absolute top-0 left-0 right-0 h-4">
         <!-- header -->
-        <button aria-label="Toggle Fullscreen" class="z-10 absolute right-1 top-1 p-1 xs:p-2 rounded-md transition-all border border-transparent hover:border-gray-400 hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="if (!document.fullscreenElement) {document.documentElement.requestFullscreen();} else {if (document.exitFullscreen) {document.exitFullscreen();}}">
+        <button aria-label="Toggle Fullscreen" class="z-10 absolute right-1 top-1 p-1 xs:p-2 rounded-md transition-all border border-transparent hover:border-gray-400 hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="if (!document.fullscreenElement) {document.documentElement.requestFullscreen();document.body.classList.add('bg-slate-200')} else {if (document.exitFullscreen) {document.exitFullscreen();}}">
             <svg class="xs:w-6 w-4 xs:h-6 h-4" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M12 5.5L10 8H14L12 5.5M18 10V14L20.5 12L18 10M6 10L3.5 12L6 14V10M14 16H10L12 18.5L14 16M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19Z"/></svg>
         </button>
     </div>
-    <!-- Wheel -->
-        <!-- options -->
-        <!-- spin button -->
-        <!-- ticker thing -->
-        <!-- winner notifier -->
-            <!-- Play again? -->
-            <!-- Hide Slice & Play again? -->
-    <!-- List -->
-        <!-- list items -->
-            <!-- text/image -->
-            <!-- visible? -->
-            <!-- color -->
-            <!-- remove -->
 
-    <!-- experimenting -->
     <div class="absolute w-full h-full flex items-center">
         <div class="w-1/2 stage" style="height:30vh">
             <div class="scene">
                 <div class="carousel"></div>
               </div>
-              <!-- end experimenting -->
         </div>
-        <div class="w-1/2 h-full relative p-10 pl-3 drop-shadow-md">
+        <div class="w-1/2 h-full relative p-10 pr-1 xs:pr-2 sm:pr-10 pl-3 drop-shadow-md">
             <div class="border-[30px] border-solid border-transparent border-r-white w-0 h-0 -mt-[30px] -left-[45px] top-1/2 absolute"></div>
             <div class="border-[20px] border-solid border-transparent border-r-slate-500 w-0 h-0 -mt-[20px] -left-[25px] top-1/2 absolute"></div>
             <div class="w-full h-full bg-white rounded-lg relative overflow-clip flex flex-col justify-between">
-                <h1 class="question-heading-title text-2xl sm:text-4xl font-bold text-center mt-8 sm:mt-16 px-4"></h1>
-                <div class="text-center mb-8">
-                    <div tabindex="0" role="button" class="spin-button spin-button-title inline-block p-2 sm:py-4 xs:px-12 text-2xl font-bold border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none">
-                        <svg class="w-9 h-9 mx-auto mb-2" viewBox="0 0 24 24">
+                <h1 class="question-heading-title text-xl sm:text-2xl md:text-4xl font-bold text-center mt-3 xs:mt-8 md:mt-16 px-4"></h1>
+                <div class="text-center mb-8 mt-1">
+                    <div tabindex="0" role="button" class="spin-button spin-button-title inline-block p-2 xs:py-3 xs:px-6 sm:py-4 sm:px-12 text-2xl font-bold border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none">
+                        <svg class="w-6 h-6 inline sm:block sm:w-9 sm:h-9 sm:mx-auto sm:mb-2" viewBox="0 0 24 24">
                             <path fill="currentColor" d="M12 10H9.09C9.43 6.55 10.6 4 12 4S14.57 6.55 14.91 10H16.9C16.44 5.44 14.42 2 12 2S7.56 5.44 7.1 10H4L8 14L12 10M12 20C10.73 20 9.64 17.89 9.21 14.92L8 16.12L7.3 15.42C8 19.26 9.84 22 12 22C14.42 22 16.44 18.56 16.9 14H14.91C14.57 17.45 13.4 20 12 20M22 11H13L11 13H22V11M2 13H5L3 11H2V13" />
                         </svg>
                         <span class="text">Spin</span>
@@ -76,11 +75,11 @@
                             </svg>
                             <span class="hidden md:inline">Settings</span>
                         </label>
-                        <div class="hidden group-focus:block group-focus-within:block hover:block absolute bottom-full rounded-md drop-shadow-2xl border border-black/20 bg-white w-48 -translate-x-24 ml-3 xs:ml-5 -mb-2 xs:mb-2 text-left">
+                        <div class="hidden group-focus:block group-focus-within:block hover:block absolute bottom-full rounded-md drop-shadow-2xl border border-black/20 bg-white w-48 -translate-x-32 ml-3 xs:ml-5 -mb-2 xs:mb-2 text-left">
                             <div class="xs:p-3 p-1">
                                 <div class="">
-                                    <input type="text" class="question-input-title border block px-2 py-1 w-full xs:mb-2">
-                                    <textarea id="options-text" class="options-textarea border block px-2 py-1 w-full xs:mb-2 h-[30vh]" style="white-space: pre;overflow-wrap: normal;overflow-x: scroll;">Brennan|#151517|https://ca.slack-edge.com/T028FU766-U028F83P7-c129603c2804-512
+                                    <input type="text" class="question-input-title border block px-2 py-1 w-full xs:mb-2 text-sm">
+                                    <textarea id="options-text" class="options-textarea border block px-2 py-1 w-full xs:mb-2 h-[30vh] text-sm" style="white-space: pre;overflow-wrap: normal;overflow-x: scroll;">Brennan|#151517|https://ca.slack-edge.com/T028FU766-U028F83P7-c129603c2804-512
 Graham|#000|https://ca.slack-edge.com/T028FU766-U028FU76A-67be5167aeb3-512
 Chris
 Adam
@@ -99,6 +98,22 @@ Karine</textarea>
                 <button class="update-options block w-full border rounded bg-blue-500 border-blue-600 drop-shadow-sm xs:py-2 py-0.5 text-center text-white" >Save & Update</button>
                                 </div>
                                 
+                            </div>
+                        </div>
+                    </div>
+                    <div tabindex="0" role="button" aria-label="Copy Share link" class="flex mx-1 group relative">
+                        <label for="sharelink-text" class="inline-block peer p-1 sm:p-2 text-sm text-center border rounded-md drop-shadow border-gray-400 bg-gray-200 transition-all hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none">
+                            <svg class="xs:w-4 w-3 xs:h-4 h-3 inline-block align-text-top" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M21,12L14,5V9C7,10 4,15 3,20C5.5,16.5 9,14.9 14,14.9V19L21,12Z" />
+                            </svg>
+                            <span class="hidden md:inline">Share</span>
+                        </label>
+                        <div class="hidden group-focus:block group-focus-within:block hover:block absolute bottom-full rounded-md drop-shadow-2xl border border-black/20 bg-white w-48 -translate-x-36 ml-3 xs:ml-5 -mb-2 xs:mb-2 text-left">
+                            <div class="xs:p-3 p-1">
+                                <div class="">
+                                    <p class="text-xs text-gray-600">Copy the url below to share:</p>
+                                    <textarea id="sharelink-text" class="sharelink-textarea border block px-2 py-1 w-full h-[20vh] text-sm"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>

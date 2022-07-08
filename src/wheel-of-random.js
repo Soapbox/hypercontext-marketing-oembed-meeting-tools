@@ -8,6 +8,7 @@ const client = createClient({
 });
 
 const queryParams = new URLSearchParams(window.location.search);
+const isEmbedded = window !== window.parent
 const roomId = queryParams.get('sync-token');
 const colors = ['hsla(  0, 100%, 50%, 1)', 'hsla( 40, 100%, 50%, 1)', 'hsla( 80, 100%, 50%, 1)', 'hsla(120, 100%, 50%, 1)', 'hsla(160, 100%, 50%, 1)', 'hsla(200, 100%, 50%, 1)', 'hsla(240, 100%, 50%, 1)', 'hsla(280, 100%, 50%, 1)', 'hsla(320, 100%, 50%, 1)', ];
 
@@ -70,8 +71,8 @@ let view = {
             view.attributes.rotationsPerSpin = 3;
             view.attributes.durationPerSpin = 7000; //ms
 
-            if(view.attributes['serialized-options'] !== null && view.attributes['serialized-options'].length > 10){
-                view.models.options = JSON.parse(view.attributes['serialized-options']);
+            if(view.attributes['serialized-options'] !== null && view.attributes['serialized-options'].length > 2){
+                view.models.options = view.actions.stringToOptionsObject(view.attributes['serialized-options']);
             } else if(localStorage.getItem('options')){
                 view.models.options = JSON.parse(localStorage.getItem('options'));
             }
@@ -108,76 +109,32 @@ let view = {
 
             var updateOptionsButton = document.querySelector('.update-options');
             var optionsTextarea = document.querySelector('.options-textarea');
+            var sharelinkTextarea = document.querySelector('.sharelink-textarea');
             if(view.models.options.length){
-                var textareaContent = view.models.options.map(function(option){
-                    return option.stringCode;
-                }).join('\n');
-                optionsTextarea.innerHTML=textareaContent;
+                optionsTextarea.innerHTML=view.actions.optionsObjectToString(view.models.options);
+                sharelinkTextarea.innerHTML = view.actions.makeUrl()
             }
             updateOptionsButton.addEventListener('click', function(){
 
-                view.actions.setTitle(document.querySelector('.question-input-title').value);
-
-                var options = [];
-                optionsTextarea.value.split('\n').forEach(function(value){
-                    if(value.length){
-                        var label = value;
-                        var textColor = 'white';
-                        var bgColor = randomColor();
-                        var bgImg = '';
-                        var background = bgColor;
-                        var className = '';
-                        var opts = value.split("|");
-                        
-
-                        if(opts.length == 3){
-                            label = opts[0];
-                            bgColor = opts[1];
-                            bgImg = opts[2];
-                            background = `${opts[1]} center / contain no-repeat url("${opts[2]}")`;
-                            className = 'with-text-and-image';
-
-                        } else if(opts.length == 2){
-                            label = opts[0];
-                            bgColor = opts[1];
-                            background = bgColor;
-
-                        } else if(value.match(/^https?:\/\/.*\/.*\.(png|gif|webp|jpeg|jpg)($|\?.*$)/)){
-                            label = '';
-                            background = `center / cover repeat url("${value}")`;
-                        }
-
-                        options.push({
-                            label: label,
-                            text: textColor,
-                            background: background,
-                            className: className,
-                            visible: true,
-                            stringCode: `${value}`
-                        });
-                    }
-                });
-
-                view.models.options = options;
+                
+                view.models.options = view.actions.stringToOptionsObject(optionsTextarea.value);
                 localStorage.setItem('options', JSON.stringify(view.models.options));
+
+                sharelinkTextarea.innerHTML = view.actions.makeUrl()
+
+                view.actions.setTitle(document.querySelector('.question-input-title').value);
                 
                 view.actions.reloadOptions();
                 view.actions.redrawCarousel();
 
-                var qp = new URLSearchParams;
-                qp.append('question', view.attributes['question-heading-title']);
-                qp.append('options', JSON.stringify(view.models.options));
-
-                console.log(qp.toString());
 
                 history.pushState({attributes: view.attributes, options: view.models.options}, '', 
-                    [
-                        document.location.origin,
-                        document.location.pathname,
-                        '?',
-                        qp.toString()
-                    ].join('')
+                    view.actions.makeUrl()
                 );
+            });
+
+            sharelinkTextarea.addEventListener('focus', function(){
+                setTimeout(function () { sharelinkTextarea.select(); }, 1);
             });
 
             
@@ -196,14 +153,93 @@ let view = {
             view.actions.rotateCarousel(true, view.attributes.durationPerSpin);
         },
         currentWinner: function(){
-            return view.models.options[view.attributes.selectedIndex % 360 % view.attributes.cellCount];
+            var index = view.attributes.selectedIndex % 360 % view.attributes.cellCount;
+
+            if(index < 0){
+                index = view.attributes.cellCount + index;
+            }
+
+            return view.models.options[index];
+        },
+        currentWinnerIndex: function(){
+            var currentlySelectedJSONString = JSON.stringify(view.actions.currentWinner());
+            var currentlySelectedIndex = view.models.options.findIndex(function(value){
+                return JSON.stringify(value) == currentlySelectedJSONString
+            });
+
+            return currentlySelectedIndex;
         },
         setTitle: function(title){
             view.attributes['question-heading-title'] = title;
             document.querySelector('.question-heading-title').innerText = view.attributes['question-heading-title'];
             document.querySelector('.question-input-title').value = view.attributes['question-heading-title'];
         },
-        redrawCarousel: function(){
+        makeUrl: function(){
+            var qp = new URLSearchParams;
+                qp.append('question', view.attributes['question-heading-title']);
+                qp.append('options', view.actions.optionsObjectToString(view.models.options));
+
+            return [
+                    document.location.origin,
+                    document.location.pathname,
+                    '?',
+                    qp.toString()
+                ].join('');
+        },
+        optionsObjectToString: function(optionsObject){
+            var string = optionsObject.map(function(option){
+                return option.stringCode;
+            }).join('\n');
+            return string;
+        },
+        stringToOptionsObject: function(string){
+            var options = [];
+            string.split('\n').forEach(function(value){
+                if(value.length){
+                    var label = value;
+                    var textColor = 'white';
+                    var bgColor = randomColor();
+                    var bgImg = '';
+                    var background = bgColor;
+                    var className = '';
+                    var opts = value.split("|");
+                    
+
+                    if(opts.length == 3){
+
+                        if(opts[1].length == 0){
+                            opts[1] = 'white';
+                        }
+
+                        label = opts[0];
+                        bgColor = opts[1];
+                        bgImg = opts[2];
+                        background = `${opts[1]} center / contain no-repeat url("${opts[2]}")`;
+                        className = 'with-text-and-image';
+
+                    } else if(opts.length == 2){
+                        label = opts[0];
+                        bgColor = opts[1];
+                        background = bgColor;
+
+                    } else if(value.match(/^https?:\/\/.*\/.*\.(png|gif|webp|jpeg|jpg)($|\?.*$)/)){
+                        label = '';
+                        background = `center / cover repeat url("${value}")`;
+                    }
+
+                    options.push({
+                        label: label,
+                        text: textColor,
+                        background: background,
+                        className: className,
+                        visible: true,
+                        stringCode: `${value}`
+                    });
+                }
+            });
+            return options;
+        },
+        redrawCarousel: function(spin = false, spinDuration){
             view.attributes.cellWidth = view.models.carousel.offsetWidth;
             view.attributes.cellHeight = view.models.carousel.offsetHeight;
             view.actions.changeCarousel(false);
@@ -306,20 +342,41 @@ let view = {
                     var optionEl = document.createElement('div');
                     optionEl.className = 'carousel__cell group relative';
                     optionEl.innerHTML = `<div>
-                        <div class="label">${option.label}</div>
-                        <div class="option-hide-button hidden group-hover:block absolute cursor-pointer right-1 top-1 p-1 xs:px-2 xs:py-1 rounded-md transition-all border border-transparent hover:text-black hover:border-gray-400 hover:bg-gray-100 active:bg-gray-300 ">Hide Option</div>
+                        <div class="label text-4xl sm:text-6xl">${option.label}</div>
+                        <div class="option-hide-button hidden group-hover:block absolute cursor-pointer right-1 top-1 p-1 xs:px-2 xs:py-1 rounded-md transition-all border border-transparent hover:text-black hover:border-gray-400 hover:bg-gray-100 active:bg-gray-300 ">Hide<span class="hidden sm:inline">Option</span></div>
                     </div>`;
                     optionEl.style.background = option.background;
                     optionEl.style.color = option.text;
                     optionEl.style.transitionDuration = '1000ms';
 
+                    
+                    optionEl.addEventListener('click', function(){
+                        var currentlySelectedIndex = view.actions.currentWinnerIndex();
+                        var diff = Math.abs(index - currentlySelectedIndex);
+
+                        if(index == currentlySelectedIndex){
+                            return;
+                        } 
+
+                        if(diff > (view.attributes.cellCount/2)){
+                            diff = (view.attributes.cellCount - diff) * -1
+                        }
+
+
+                        if(index > currentlySelectedIndex){
+                            view.attributes.selectedIndex = view.attributes.selectedIndex + diff;
+                        } else {
+                            view.attributes.selectedIndex = view.attributes.selectedIndex - diff;
+                        }
+                        
+
+                        view.actions.rotateCarousel(true, 100);
+                    });
+
                     optionEl.querySelector('.option-hide-button').addEventListener('click', function(){
                         optionEl.style.opacity = 0.5;
                         setTimeout(function(){
-                            var currentlySelectedJSONString = JSON.stringify(view.actions.currentWinner());
-                            var currentlySelectedIndex = view.models.options.findIndex(function(value){
-                                return JSON.stringify(value) == currentlySelectedJSONString
-                            });
+                            var currentlySelectedIndex = view.actions.currentWinnerIndex();
 
 
                             optionEl.remove();
@@ -336,6 +393,8 @@ let view = {
                             view.actions.redrawCarousel(true);
 
                         }, 500);
+
+                        return false;
                     })
 
                     optionsArr.push(optionEl);
@@ -362,6 +421,14 @@ window.view = view;
 document.addEventListener("DOMContentLoaded", function(){
 
     view.actions.init();
+
+    
+    document.body.classList.remove('bg-slate-200');
+    if(isEmbedded){
+        document.body.classList.add('bg-transparent');
+    } else {
+        document.body.classList.add('bg-slate-200');
+    }
     
 
 });
