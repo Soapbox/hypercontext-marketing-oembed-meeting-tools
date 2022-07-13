@@ -31,6 +31,7 @@ $title = $title." Meeting Timer";
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="googlebot" content="noindex,indexifembedded" />
   <title><?php echo $title;?> - Free Meeting Tools - Hypercontext.com</title>
   <link rel="alternate" type="application/json+oembed"
     href="http://hypercontext.com/embeds/oembed.php?url=<?php echo ($escaped_url);?>&format=json"
