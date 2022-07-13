@@ -77,6 +77,27 @@ let view = {
                 view.models.options = JSON.parse(localStorage.getItem('options'));
             }
 
+            var fullscreenToggle = document.getElementById('toggle-fullscreen');
+            fullscreenToggle.addEventListener('click', function(){
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            });
+
+            document.addEventListener('fullscreenchange', function(){
+                if(isEmbedded){
+                    if(document.fullscreenElement){
+                        document.body.classList.add('bg-slate-200');
+                        document.body.classList.remove('bg-transparent');
+                    } else {
+                        document.body.classList.remove('bg-slate-200');
+                        document.body.classList.add('bg-transparent');
+                    }
+                }
+            });
+
             
             var prevButton = document.querySelector('.previous-button');
             prevButton.addEventListener( 'click', function() {
@@ -110,9 +131,12 @@ let view = {
             var updateOptionsButton = document.querySelector('.update-options');
             var optionsTextarea = document.querySelector('.options-textarea');
             var sharelinkTextarea = document.querySelector('.sharelink-textarea');
+            var shareembedTextarea = document.querySelector('.shareembed-textarea');
+            
             if(view.models.options.length){
                 optionsTextarea.innerHTML=view.actions.optionsObjectToString(view.models.options);
                 sharelinkTextarea.innerHTML = view.actions.makeUrl()
+                shareembedTextarea.innerHTML = view.actions.makeEmbed();
             }
             updateOptionsButton.addEventListener('click', function(){
 
@@ -120,7 +144,8 @@ let view = {
                 view.models.options = view.actions.stringToOptionsObject(optionsTextarea.value);
                 localStorage.setItem('options', JSON.stringify(view.models.options));
 
-                sharelinkTextarea.innerHTML = view.actions.makeUrl()
+                sharelinkTextarea.innerHTML = view.actions.makeUrl();
+                shareembedTextarea.innerHTML = view.actions.makeEmbed();
 
                 view.actions.setTitle(document.querySelector('.question-input-title').value);
                 
@@ -137,6 +162,10 @@ let view = {
                 setTimeout(function () { sharelinkTextarea.select(); }, 1);
             });
 
+            shareembedTextarea.addEventListener('focus', function(){
+                setTimeout(function () { shareembedTextarea.select(); }, 1);
+            });
+
             
             // set initials
             view.actions.reloadOptions();
@@ -148,7 +177,7 @@ let view = {
 
             view.attributes.selectedIndex = view.attributes.selectedIndex + incrementBy;
 
-            console.log(`${view.actions.currentWinner().label} will win`);
+            //console.log(`${view.actions.currentWinner().label} will win`);
 
             view.actions.rotateCarousel(true, view.attributes.durationPerSpin);
         },
@@ -186,6 +215,9 @@ let view = {
                     qp.toString()
                 ].join('');
         },
+        makeEmbed: function(){
+            return `<iframe  src="${view.actions.makeUrl()}" title="${view.attributes['question-heading-title']} - Wheel of Random Choices - Hypercontext.com" style="width:100%;height:100%;max-width:1088px;max-height:680px;aspect-ratio: 1088 / 680;" width="1088" height="680" border="0" loading="lazy" allowfullscreen="true" scrolling="no" frameborder="0"></iframe>`;
+        },
         optionsObjectToString: function(optionsObject){
             var string = optionsObject.map(function(option){
                 return option.stringCode;
@@ -194,7 +226,7 @@ let view = {
         },
         stringToOptionsObject: function(string){
             var options = [];
-            string.split('\n').forEach(function(value){
+            string.split('\n').forEach(function(value, index){
                 if(value.length){
                     var label = value;
                     var textColor = 'white';
@@ -228,6 +260,7 @@ let view = {
                     }
 
                     options.push({
+                        id: index,
                         label: label,
                         text: textColor,
                         background: background,
@@ -339,11 +372,17 @@ let view = {
             var optionsArr = []
             view.models.options.forEach(function(option, index){
                 if(option.visible){
+
+                    var percentTextAdjustment = 100;
+                    if(option.label.length > 10){
+                        percentTextAdjustment = Math.max(10/option.label.length * 100, 33);
+                    }
+
                     var optionEl = document.createElement('div');
                     optionEl.className = 'carousel__cell group relative';
                     optionEl.innerHTML = `<div>
-                        <div class="label text-4xl sm:text-6xl">${option.label}</div>
-                        <div class="option-hide-button hidden group-hover:block absolute cursor-pointer right-1 top-1 p-1 xs:px-2 xs:py-1 rounded-md transition-all border border-transparent hover:text-black hover:border-gray-400 hover:bg-gray-100 active:bg-gray-300 ">Hide<span class="hidden sm:inline">Option</span></div>
+                        <div class="label text-4xl sm:text-6xl px-2" style="line-height:${percentTextAdjustment}%;"><span style="font-size:${percentTextAdjustment}%;line-height:${percentTextAdjustment}%;">${option.label}</span></div>
+                        <div class="option-hide-button hidden group-hover:block absolute cursor-pointer right-1 top-1 p-1 xs:px-2 xs:py-1 rounded-md transition-all border border-transparent hover:text-black hover:border-gray-400 hover:bg-gray-100 active:bg-gray-300 ">Hide <span class="hidden sm:inline">Option</span></div>
                     </div>`;
                     optionEl.style.background = option.background;
                     optionEl.style.color = option.text;

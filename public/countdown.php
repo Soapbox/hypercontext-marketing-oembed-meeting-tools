@@ -1,9 +1,40 @@
-<!doctype html>
+<?php
+$url =  "https://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+$escaped_url = htmlspecialchars( $url );
+
+$title = array();
+$days = isset($_GET['days']) ? intval($_GET['days']) : 0;
+$hours = isset($_GET['hours']) ? intval($_GET['hours']) : 0;
+$minutes = isset($_GET['minutes']) ? intval($_GET['minutes']) : 10;
+$seconds = isset($_GET['seconds']) ? intval($_GET['seconds']) : 0;
+
+if( $days ) {
+    $title[] = $days . ' day';
+}
+if( $hours ) {
+    $title[] = $hours . ' hour';
+}
+if( $minutes ) {
+    $title[] = $minutes . ' minute';
+}
+if( $seconds ) {
+    $title[] = $seconds . ' second';
+}
+
+$title = implode(", ", $title);
+
+
+$title = $title." Meeting Timer";
+
+?>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Countdown Timer - Free Meeting Tools - Hypercontext.com</title>
+  <title><?php echo $title;?> - Free Meeting Tools - Hypercontext.com</title>
+  <link rel="alternate" type="application/json+oembed"
+    href="http://hypercontext.com/embeds/oembed.php?url=<?php echo ($escaped_url);?>&format=json"
+    title="<?php echo $title;?>" />
   <script type="text/javascript" src="bundle-index.js"></script>
 </head>
 <body class="w-full h-full bg-slate-200">

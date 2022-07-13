@@ -23,13 +23,13 @@ if(isset($_GET['question'])){
 <body class="w-full h-full bg-slate-200">
     <div class="absolute top-0 left-0 right-0 h-4">
         <!-- header -->
-        <button aria-label="Toggle Fullscreen" class="z-10 absolute right-1 top-1 p-1 xs:p-2 rounded-md transition-all border border-transparent hover:border-gray-400 hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none" onclick="if (!document.fullscreenElement) {document.documentElement.requestFullscreen();document.body.classList.add('bg-slate-200')} else {if (document.exitFullscreen) {document.exitFullscreen();}}">
+        <button id="toggle-fullscreen" aria-label="Toggle Fullscreen" class="z-10 absolute right-1 top-1 p-1 xs:p-2 rounded-md transition-all border border-transparent hover:border-gray-400 hover:bg-gray-100 hover:drop-shadow-xl active:bg-gray-300 active:drop-shadow-none">
             <svg class="xs:w-6 w-4 xs:h-6 h-4" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="24" height="24" viewBox="0 0 24 24"><path d="M12 5.5L10 8H14L12 5.5M18 10V14L20.5 12L18 10M6 10L3.5 12L6 14V10M14 16H10L12 18.5L14 16M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3M21 19H3V5H21V19Z"/></svg>
         </button>
     </div>
 
     <div class="absolute w-full h-full flex items-center">
-        <div class="w-1/2 stage" style="height:30vh">
+        <div class="w-1/2 stage xs:pl-2 sm:pl-10" style="height:30vh">
             <div class="scene">
                 <div class="carousel"></div>
               </div>
@@ -95,7 +95,7 @@ Nico
 Juan
 Eli
 Karine</textarea>
-                <button class="update-options block w-full border rounded bg-blue-500 border-blue-600 drop-shadow-sm xs:py-2 py-0.5 text-center text-white" >Save & Update</button>
+                <button class="update-options block w-full border rounded bg-blue-500 border-blue-600 drop-shadow-sm xs:py-2 py-0.5 text-center text-white" >Update</button>
                                 </div>
                                 
                             </div>
@@ -110,9 +110,14 @@ Karine</textarea>
                         </label>
                         <div class="hidden group-focus:block group-focus-within:block hover:block absolute bottom-full rounded-md drop-shadow-2xl border border-black/20 bg-white w-48 -translate-x-36 ml-3 xs:ml-5 -mb-2 xs:mb-2 text-left">
                             <div class="xs:p-3 p-1">
+                                <div class="mb-2">
+                                    <p class="text-xs text-gray-600">Copy the url:</p>
+                                    <textarea id="sharelink-text" class="sharelink-textarea border block px-2 py-1 w-full h-6 text-xs"></textarea>
+                                </div>
+
                                 <div class="">
-                                    <p class="text-xs text-gray-600">Copy the url below to share:</p>
-                                    <textarea id="sharelink-text" class="sharelink-textarea border block px-2 py-1 w-full h-[20vh] text-sm"></textarea>
+                                    <p class="text-xs text-gray-600">Copy the embed code:</p>
+                                    <textarea id="shareembed-text" class="shareembed-textarea border block px-2 py-1 w-full h-[15vh] min-h-7 max-h-40 text-xs"></textarea>
                                 </div>
                             </div>
                         </div>
